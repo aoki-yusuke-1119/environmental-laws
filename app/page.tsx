@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { cayzenLogout } from '@cayzen/nextauth';
 import {
   Box,
   Button,
@@ -15,15 +17,17 @@ import {
   AppBar,
   Toolbar,
   Stack,
-  Collapse,
   IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Article as ArticleIcon,
   Clear as ClearIcon,
-  KeyboardArrowDown as KeyboardArrowDownIcon,
-  KeyboardArrowUp as KeyboardArrowUpIcon,
+  ExpandMore as ExpandMoreIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { DataGridPro, GridColDef, GridRowSelectionModel, LicenseInfo } from '@mui/x-data-grid-pro';
 import { AmendmentSummary, LawRevision, LAW_CATEGORIES } from '@/types/law';
@@ -36,6 +40,7 @@ if (process.env.NEXT_PUBLIC_MUI_LICENSE_KEY) {
 }
 
 export default function Home() {
+  const { data: session } = useSession();
   const [dateFrom, setDateFrom] = useState('2025-04-01');
   const [dateTo, setDateTo] = useState('2025-09-30');
   const [lawNameFilter, setLawNameFilter] = useState('');
@@ -47,7 +52,6 @@ export default function Home() {
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
-  const [searchFormExpanded, setSearchFormExpanded] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // 全件表示（フィルタリングはAPI側で実施）
@@ -180,6 +184,12 @@ export default function Home() {
     }
   };
 
+  const handleLogout = () => {
+    cayzenLogout({
+      oauthIssuer: process.env.NEXT_PUBLIC_OAUTH_ISSUER!,
+    });
+  };
+
   // DataGrid用のカラム定義
   const columns: GridColDef[] = [
     {
@@ -235,127 +245,134 @@ export default function Home() {
               e-Gov法令改正情報検索
             </Typography>
           </Box>
-          <IconButton
-            color="inherit"
-            onClick={() => setSearchFormExpanded(!searchFormExpanded)}
-            aria-label="検索条件を表示/非表示"
-          >
-            {searchFormExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-          </IconButton>
-        </Toolbar>
-        {/* 検索フォーム */}
-        <Collapse in={searchFormExpanded}>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-            <Typography variant="h6" gutterBottom>
-              検索条件
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              改正法令の公布日または施行日が期間内にある法令を検索します
-            </Typography>
-
-            {/* 期間指定 */}
-            <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-                <TextField
-                  sx={{ width: 180 }}
-                  size="small"
-                  label="改正日（開始）"
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  sx={{ width: 180 }}
-                  size="small"
-                  label="改正日（終了）"
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  sx={{ flex: 1 }}
-                  size="small"
-                  label="法令名で絞り込み（検索時に適用）"
-                  placeholder="例: 電波法、労働安全"
-                  value={lawNameFilter}
-                  onChange={(e) => setLawNameFilter(e.target.value)}
-                  disabled={loading}
-                />
-            </Stack>
-
-            {/* 進捗表示 */}
-            {loading && (
-              <Alert severity="info" sx={{ mb: 3 }}>
-                <Typography variant="body2">{loadingMessage}</Typography>
-                {progress.total > 0 && (
-                  <Box sx={{ mt: 1 }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(progress.current / progress.total) * 100}
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
-                      {progress.current} / {progress.total} 件取得中
-                    </Typography>
-                  </Box>
-                )}
-              </Alert>
-            )}
-
-            {/* カテゴリフィルタ */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                カテゴリで絞り込み（検索時に適用、複数選択可）
+          {session?.user && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2">
+                {session.user.name || session.user.email}
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {LAW_CATEGORIES.map((category) => (
-                  <Chip
-                    key={category.code}
-                    label={category.name}
-                    onClick={() => handleCategoryToggle(category.code)}
-                    color={selectedCategories.includes(category.code) ? 'primary' : 'default'}
-                    disabled={loading}
-                    title={category.description}
-                  />
-                ))}
-              </Box>
-              {selectedCategories.length > 0 && (
-                <Button
-                  size="small"
-                  startIcon={<ClearIcon />}
-                  onClick={() => setSelectedCategories([])}
-                  disabled={loading}
-                  sx={{ mt: 1 }}
-                >
-                  すべて解除
-                </Button>
-              )}
-            </Box>
-
-            {/* 検索ボタン */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                variant="contained"
-                size="large"
-                onClick={handleSearch}
-                disabled={loading}
-                startIcon={<SearchIcon />}
-                sx={{ minWidth: 200 }}
+              <IconButton
+                color="inherit"
+                onClick={handleLogout}
+                size="small"
+                title="ログアウト"
               >
-                {loading ? '検索中...' : '検索'}
-              </Button>
+                <LogoutIcon fontSize="small" />
+              </IconButton>
             </Box>
-          </CardContent>
-        </Card>
-        </Collapse>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
+          )}
+        </Toolbar>
       </AppBar>
+
+      {/* 検索フォーム */}
+      <Accordion defaultExpanded sx={{ position: 'sticky', top: 64, zIndex: 1000 }}>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography variant="h6">検索条件</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            改正法令の公布日または施行日が期間内にある法令を検索します
+          </Typography>
+
+          {/* 期間指定 */}
+          <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+            <TextField
+              sx={{ width: 180 }}
+              size="small"
+              label="改正日（開始）"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              sx={{ width: 180 }}
+              size="small"
+              label="改正日（終了）"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              sx={{ flex: 1 }}
+              size="small"
+              label="法令名で絞り込み（検索時に適用）"
+              placeholder="例: 電波法、労働安全"
+              value={lawNameFilter}
+              onChange={(e) => setLawNameFilter(e.target.value)}
+              disabled={loading}
+            />
+          </Stack>
+
+          {/* 進捗表示 */}
+          {loading && (
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <Typography variant="body2">{loadingMessage}</Typography>
+              {progress.total > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={(progress.current / progress.total) * 100}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {progress.current} / {progress.total} 件取得中
+                  </Typography>
+                </Box>
+              )}
+            </Alert>
+          )}
+
+          {/* カテゴリフィルタ */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              カテゴリで絞り込み（検索時に適用、複数選択可）
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {LAW_CATEGORIES.map((category) => (
+                <Chip
+                  key={category.code}
+                  label={category.name}
+                  onClick={() => handleCategoryToggle(category.code)}
+                  color={selectedCategories.includes(category.code) ? 'primary' : 'default'}
+                  disabled={loading}
+                  title={category.description}
+                />
+              ))}
+            </Box>
+            {selectedCategories.length > 0 && (
+              <Button
+                size="small"
+                startIcon={<ClearIcon />}
+                onClick={() => setSelectedCategories([])}
+                disabled={loading}
+                sx={{ mt: 1 }}
+              >
+                すべて解除
+              </Button>
+            )}
+          </Box>
+
+          {/* 検索ボタン */}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleSearch}
+              disabled={loading}
+              startIcon={<SearchIcon />}
+              sx={{ minWidth: 200 }}
+            >
+              {loading ? '検索中...' : '検索'}
+            </Button>
+          </Box>
+        </AccordionDetails>
+      </Accordion>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
         {amendments.length > 0 ? (

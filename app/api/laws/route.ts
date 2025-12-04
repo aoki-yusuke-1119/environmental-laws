@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EGovAPIClient } from '@/lib/egov-client';
 
+// 動的レンダリングを強制（searchParamsを使用するため）
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
