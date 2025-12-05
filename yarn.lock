@@ -94,7 +94,7 @@
 
 "@cayzen/nextauth@git+https://github.com/eitoss/cayzen-nextauth.git":
   version "0.1.0"
-  resolved "git+https://github.com/eitoss/cayzen-nextauth.git#e6ca414d166ab3fde98da4b410f13221589f6e5b"
+  resolved "git+https://github.com/eitoss/cayzen-nextauth.git#d5a1377f4416e5350e5d14f85668274c631f2c61"
 
 "@emotion/babel-plugin@^11.13.5":
   version "11.13.5"
